@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type Users struct {
+type User struct {
 	ID            uint
 	Name          string
 	Email         string
@@ -12,10 +12,11 @@ type Users struct {
 	RememberToken string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	Tokens        []Tokens
 }
 
-func NewUsers(name, email, password string) *Users {
-	return &Users{
+func NewUser(name, email, password string) *User {
+	return &User{
 		Name:      name,
 		Email:     email,
 		Password:  password,
