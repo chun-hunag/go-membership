@@ -5,7 +5,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/joho/godotenv"
+	"go-membership/app/utilis"
+	"go-membership/configs"
 	"log"
 	"os"
 )
@@ -16,16 +17,12 @@ func main() {
 		log.Fatal("Missing argument 1")
 	}
 
+	initialize()
 	action := args[1]
-	loadEnv()
-	host := os.Getenv("POSTGRESQL_HOST")
-	port := os.Getenv("POSTGRESQL_PORT")
-	user := os.Getenv("POSTGRESQL_USER")
-	password := os.Getenv("POSTGRESQL_PASSWORD")
-	database := os.Getenv("POSTGRESQL_DB")
+	connection := configs.GetDatabaseConnection("postgres")
 	m, err := migrate.New(
 		"file://database/migrations",
-		fmt.Sprintf("postgres://%s:%s@%s:%s/%s? sslmode=disable", user, password, host, port, database))
+		fmt.Sprintf("postgres://%s:%s@%s:%s/%s? sslmode=disable", connection.Username, connection.Password, connection.Host, connection.Port, connection.Database))
 	if err != nil {
 		log.Fatal("Migration instanced failed.")
 	}
@@ -46,9 +43,7 @@ func main() {
 	}
 }
 
-func loadEnv() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+func initialize() {
+	utilis.LoadEnv()
+	configs.LoadConfig()
 }

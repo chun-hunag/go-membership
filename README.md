@@ -3,5 +3,5 @@ membership application
 
 
 ## Migration
-* up: `go run .\command\migrate\main.go up`
-* down: `go run .\command\migrate\main.go down`
+* up: `go run .\app\console\migrate.go up`
+* down: `go run .\app\console\migrate.go down`
