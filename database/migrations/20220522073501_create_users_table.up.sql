@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS "user" (
+CREATE TABLE IF NOT EXISTS users (
     id serial NOT null PRIMARY KEY,
     name varchar(10) not null,
     email varchar(40) unique not null,
@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS "user" (
     updated_at timestamp
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_name ON "user" (name);
-CREATE INDEX IF NOT EXISTS idx_user_email ON "user" (email);
+CREATE INDEX IF NOT EXISTS idx_user_name ON users (name);
+CREATE INDEX IF NOT EXISTS idx_user_email ON users (email);

@@ -12,7 +12,7 @@ type User struct {
 	RememberToken string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
-	Tokens        []Tokens
+	Tokens        []Token `gorm:"foreignKey:user_id"`
 }
 
 func NewUser(name, email, password string) *User {

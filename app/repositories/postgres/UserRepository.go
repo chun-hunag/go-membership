@@ -10,7 +10,7 @@ type UserRepository struct {
 
 const UsersTable = "users"
 
-func NewUsersRepository() *UserRepository {
+func NewUserRepository() *UserRepository {
 	return &UserRepository{
 		NewConnection("postgres"),
 	}
