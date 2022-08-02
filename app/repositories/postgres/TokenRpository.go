@@ -17,16 +17,24 @@ func NewTokenRepository() *TokenRepository {
 	}
 }
 
-func (tr *TokenRepository) Insert(token *models.Token) {
-	tr.open()
+func (tr *TokenRepository) Insert(token *models.Token) error {
+	err := tr.open()
+	if err != nil {
+		return err
+	}
 	defer tr.close()
 	tr.db.Create(token)
+	return nil
 }
 
-func (tr *TokenRepository) SelectUnExpiredByUserId(userId int) *models.Token {
-	tr.open()
+func (tr *TokenRepository) SelectUnExpiredByUserId(userId int) (*models.Token, error) {
+	err := tr.open()
+	if err != nil {
+		return nil, err
+	}
+
 	defer tr.close()
 	var token models.Token
 	tr.db.Table(TokensTable).Where("user_id = ? ", userId).Where("expired_at > ?", time.Now()).Limit(1).Find(&token)
-	return &token
+	return &token, nil
 }

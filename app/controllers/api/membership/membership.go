@@ -2,22 +2,20 @@ package membership
 
 import (
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	"go-membership/app/models"
 	"go-membership/app/repositories/postgres"
+	"go-membership/app/services"
 	"go-membership/app/utilis"
 	"go-membership/configs"
 	"golang.org/x/crypto/bcrypt"
-	"log"
 	"net/http"
-	"time"
 )
 
 var (
 	secret          = configs.GetJwtSecret()
 	userRepository  = postgres.NewUserRepository()
 	tokenRepository = postgres.NewTokenRepository()
+	memberService   = services.NewMemberService()
 )
 
 type registerForm struct {
@@ -78,32 +76,29 @@ func Registration(c *gin.Context) {
 		return
 	}
 
-	// is user registered
-	if userRepository.CountByEmail(registerForm.Email) > 0 {
+	statusRegister := memberService.Register(registerForm.Name, registerForm.Email, registerForm.Password)
+
+	switch statusRegister {
+	case services.StatusRegisterEmailRegistered:
 		response["message"] = "The email had been registered."
 		c.JSON(http.StatusBadRequest, response)
-		return
-	}
-
-	// crypt password
-	if isSuccess, err := registerForm.cryptPassword(); !isSuccess {
-		response["message"] = "Some thing wrong."
-		log.Println("CryptPassword Failed:", err)
-		c.JSON(http.StatusBadRequest, response)
-		return
-	}
-
-	// register
-	users := models.NewUser(registerForm.Name, registerForm.Email, registerForm.Password)
-	userRepository.Insert(users)
-	if userRepository.CountByEmail(registerForm.Email) != 1 {
+		break
+	case services.StatusRegisterEmailRegisterFailed:
 		response["message"] = "The registration is failed."
 		c.JSON(http.StatusBadRequest, response)
-		return
+		break
+	case services.StatusRegisterEncryptedPasswordFailed:
+		response["message"] = "Some thing wrong."
+		c.JSON(http.StatusBadRequest, response)
+		break
+	case services.StatusRegisterInternalError:
+		response["message"] = "The system has some error."
+		c.JSON(http.StatusInternalServerError, response)
+		break
+	case services.StatusRegisterSuccess:
+		response["message"] = "Registered."
+		c.JSON(http.StatusOK, response)
 	}
-
-	response["message"] = "Registered."
-	c.JSON(http.StatusOK, response)
 }
 
 type loginForm struct {
@@ -121,16 +116,6 @@ func (l *loginForm) Validate() (bool, []string) {
 	return isValid, invalids
 }
 
-func (l *loginForm) isPasswordCorrect(password string) bool {
-	byteHashed := []byte(password)
-	byteInputPassword := []byte(l.Password)
-	err := bcrypt.CompareHashAndPassword(byteHashed, byteInputPassword)
-	if err != nil {
-		return false
-	}
-	return true
-}
-
 func Login(c *gin.Context) {
 	var loginForm loginForm
 	c.Bind(&loginForm)
@@ -144,48 +129,32 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// get user from database
-	user := userRepository.SelectByEmail(loginForm.Email)
-	if user.ID == 0 {
+	token, loginStatus := memberService.Login(loginForm.Email, loginForm.Password)
+	switch loginStatus {
+	case services.StatusLoginEmailNotExist:
 		response["message"] = "User has this email is not existed."
 		c.JSON(http.StatusBadRequest, response)
-		return
-	}
-
-	// valid password
-	if !loginForm.isPasswordCorrect(user.Password) {
+		break
+	case services.StatusLoginPasswordInvalid:
 		response["message"] = "Password is not correct."
 		c.JSON(http.StatusBadRequest, response)
-		return
-	}
-
-	// search present jwt token
-	oneDayAfterTime := time.Now().AddDate(0, 0, 1)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-		Subject:   user.Email,
-		ExpiresAt: oneDayAfterTime.Unix(),
-	})
-
-	tokenStr, err := token.SignedString([]byte(secret))
-	if err != nil {
+		break
+	case services.StatusLoginInternalError:
+		c.JSON(http.StatusInternalServerError, response)
+		break
+	case services.StatusLoginSignJwtFailed:
 		response["message"] = "Some thing wrong."
-		log.Println("Signed JwtToken Failed:", err)
 		c.JSON(http.StatusBadRequest, response)
-		return
-	}
-
-	tokenRepository.Insert(models.NewToken(*user, tokenStr, oneDayAfterTime))
-	tokenModel := tokenRepository.SelectUnExpiredByUserId(int(user.ID))
-	if tokenModel.ID == 0 {
+		break
+	case services.StatusLoginInsertTokenFailed:
 		response["message"] = "Some thing wrong."
-		log.Println("Insert token failed.")
 		c.JSON(http.StatusBadRequest, response)
-		return
+		break
+	case services.StatusLoginSuccess:
+		response["message"] = "Login success."
+		response["token"] = token
+		c.JSON(http.StatusBadRequest, response)
 	}
-
-	response["message"] = "Login success."
-	response["token"] = tokenStr
-	c.JSON(http.StatusBadRequest, response)
 }
 
 func SendPasswordResetEmail(c *gin.Context) {

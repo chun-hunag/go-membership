@@ -16,24 +16,35 @@ func NewUserRepository() *UserRepository {
 	}
 }
 
-func (ur *UserRepository) Insert(user *models.User) {
-	ur.open()
+func (ur *UserRepository) Insert(user *models.User) error {
+	err := ur.open()
+	if err != nil {
+		return err
+	}
+
 	defer ur.close()
 	ur.db.Create(user)
+	return nil
 }
 
-func (ur *UserRepository) CountByEmail(email string) int64 {
-	ur.open()
+func (ur *UserRepository) CountByEmail(email string) (int64, error) {
+	err := ur.open()
+	if err != nil {
+		return 0, err
+	}
 	defer ur.close()
 	var count int64
 	ur.db.Table(UsersTable).Where("email = ?", email).Count(&count)
-	return count
+	return count, nil
 }
 
-func (ur *UserRepository) SelectByEmail(email string) *models.User {
-	ur.open()
+func (ur *UserRepository) SelectByEmail(email string) (*models.User, error) {
+	err := ur.open()
+	if err != nil {
+		return nil, err
+	}
 	defer ur.close()
 	var user models.User
 	ur.db.Table(UsersTable).Where("email = ? ", email).Find(&user)
-	return &user
+	return &user, err
 }
